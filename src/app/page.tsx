@@ -1,18 +1,14 @@
-"use client";
 
-import { Button } from "@/components/ui/button";
-import prisma from "@/lib/prisma";
 
-const data = await prisma.user.findMany();
+import { requireAuth } from "@/lib/auth-utils";
 
-const Page = () => {
+
+const Page = async () => {
+  await requireAuth();
   return (
     <div className="flex h-screen w-screen items-center justify-center">
-      <Button onClick={() => { alert("hi amazon"); }} className="text-gray-300 font-extrabold">
-        hi amazon
-      </Button>
 
-
+      Hello
     </div>
   );
 };
