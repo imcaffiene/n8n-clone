@@ -104,6 +104,7 @@ export function LoginForm({
                 <Input
                   id="password"
                   type="password"
+                  placeholder="*********"
                   {...register("password")}
                 />
 
@@ -128,7 +129,7 @@ export function LoginForm({
               </FieldSeparator>
 
               <Field className="grid grid-cols-2 gap-4">
-                <Button variant="outline" type="button" disabled={isSubmitting}>
+                <Button variant="outline" type="button" disabled={isSubmitting}                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="20"

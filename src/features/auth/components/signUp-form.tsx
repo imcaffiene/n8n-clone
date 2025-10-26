@@ -102,6 +102,7 @@ export function SignupForm({
                     <Input
                       id="password"
                       type="password"
+                      placeholder="*********"
                       {...register("password")}
                     />
                     {errors.password && (
@@ -117,6 +118,7 @@ export function SignupForm({
                     <Input
                       id="confirm-password"
                       type="password"
+                      placeholder="*********"
                       {...register("confirmPassword")}
                     />
                     {errors.confirmPassword && (
@@ -131,7 +133,9 @@ export function SignupForm({
                 </FieldDescription> */}
               </Field>
               <Field>
-                <Button type="submit" disabled={isSubmitting}>
+
+                <Button
+                  type="submit" disabled={isSubmitting}>
                   {isSubmitting ? "Creating Account..." : "Create Account"}
                 </Button>
               </Field>
