@@ -1,6 +1,5 @@
 procs:
   inngest:
-    cmd: ["npm", "run", "inngest:dev"]
-
+    cmd: ["bunx", "inngest-cli", "dev"]
   next:
-    cmd: ["npm", "run", "dev"]
+    cmd: ["bun", "run", "dev"]
