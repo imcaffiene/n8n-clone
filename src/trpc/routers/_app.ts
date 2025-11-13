@@ -2,7 +2,6 @@ import { inngest } from "@/inngest/client";
 import { createTRPCRouter, protectedProcedure } from "../init";
 import prisma from "@/lib/prisma";
 import { createPerplexity } from "@ai-sdk/perplexity";
-import { generateText } from "ai";
 
 const perplexity = createPerplexity({
   apiKey: process.env.PERPLEXITY_API_KEY || "",
