@@ -1,6 +1,14 @@
 "use client";
 
-import { EntityContainer, EntityHeader, EntityPagination, EntitySearch } from "@/components/entity-component";
+import {
+  EmptyView,
+  EntityContainer,
+  EntityHeader,
+  EntityPagination,
+  EntitySearch,
+  ErrorView,
+  LoadingView
+} from "@/components/entity-component";
 import { useCreateWorkflow, useSuspenseWorkflows } from "../hooks/use-workflows";
 import { useUpgradeModal } from "@/hooks/use-upgrade-modal";
 import { useRouter } from "next/navigation";
@@ -25,7 +33,12 @@ export const WorkflowsSearch = () => {
 };
 
 export const WorkFlowsList = () => {
+  // throw new Error("hi");
   const workflows = useSuspenseWorkflows();
+
+  if (workflows.data.item.length === 0) {
+    return <WorkflowEmpty />;
+  }
 
   return (
     <p>
@@ -92,5 +105,47 @@ export const WorkflowsContainer = ({ children }: { children: React.ReactNode; })
     >
       {children}
     </EntityContainer>
+  );
+};
+
+
+export const WorkflowLoading = () => {
+  return (
+    <LoadingView
+      message="Loading wokflows"
+    />
+  );
+};
+
+
+export const WorkflowError = () => {
+  return (
+    <ErrorView
+      message="Error loading wokflows"
+    />
+  );
+};
+
+
+export const WorkflowEmpty = () => {
+  const createWorkflow = useCreateWorkflow();
+  const { handleError, modal } = useUpgradeModal();
+
+  const handleCreate = () => {
+    createWorkflow.mutate(undefined, {
+      onError: (err) => {
+        handleError(err);
+      }
+    });
+  };
+
+  return (
+    <>
+      {modal}
+      <EmptyView
+        onNew={handleCreate}
+        message="You haven&apos;t created any workflows yet."
+      />
+    </>
   );
 };

@@ -2,6 +2,9 @@ import { UpgradeModal } from "@/components/upgrade-modal";
 import { TRPCClientError } from "@trpc/client";
 import { useState } from "react";
 
+
+// hook for handling upgrade/payment requirements
+
 export const useUpgradeModal = () => {
     const [open, setOpen] = useState(false);
 
