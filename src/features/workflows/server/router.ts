@@ -32,6 +32,11 @@ export const workflowsRouter = () =>
           data: {
             name: input?.name || generateSlug(3),
             userId: ctx.auth.user.id,
+            node:{
+              create:{
+                
+              }
+            }
           },
         });
       }),

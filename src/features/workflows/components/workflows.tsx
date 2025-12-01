@@ -116,7 +116,7 @@ export const WorkflowsContainer = ({ children }: { children: React.ReactNode; })
 export const WorkflowLoading = () => {
   return (
     <LoadingView
-      message="Loading wokflows"
+      message="Loading workflows"
     />
   );
 };
@@ -125,7 +125,7 @@ export const WorkflowLoading = () => {
 export const WorkflowError = () => {
   return (
     <ErrorView
-      message="Error loading wokflows"
+      message="Error loading workflows"
     />
   );
 };
@@ -169,7 +169,7 @@ export const WorkFlowItems = ({ workflow }: WorkFlowItemsProps) => {
       title={workflow.name}
       subtitle={
         <>
-          Update {formatDistanceToNow(workflow.updatedAt, { addSuffix: true })}{" "}
+          Updated {formatDistanceToNow(workflow.updatedAt, { addSuffix: true })}{" "}
           &bull; Created {formatDistanceToNow(workflow.createdAt, { addSuffix: true })}{" "}
         </>
       }

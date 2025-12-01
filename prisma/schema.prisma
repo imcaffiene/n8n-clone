@@ -77,6 +77,56 @@ model WorkFlow {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  node        Node[]
+  connections Connection[]
+
   User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId String
+}
+
+enum NodeType {
+  INITIAL
+}
+
+model Node {
+  id         String @id @default(cuid())
+  workflowId String
+
+  name     String
+  type     NodeType
+  position Json
+  data     Json     @default("{}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workFlow    WorkFlow     @relation(fields: [workFlowId], references: [id], onDelete: Cascade)
+  workFlowId  String
+  connections Connection[]
+
+  outputConnections Connection[] @relation("FromNode")
+  inputConnections  Connection[] @relation("ToNode")
+}
+
+model Connection {
+  id String @id @default(cuid())
+
+  workFlow   WorkFlow? @relation(fields: [workFlowId], references: [id], onDelete: Cascade)
+  workFlowId String?
+
+  fromNodeId String
+  fromNode   Node   @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)
+
+  toNodeId String
+  toNode   Node   @relation("ToNode", fields: [toNodeId], references: [id], onDelete: Cascade)
+
+  fromOutput String @default("main")
+  toInput    String @default("main")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  node      Node?    @relation(fields: [nodeId], references: [id])
+  nodeId    String?
+
+  @@unique([fromNodeId, toNodeId, fromOutput, toInput])
 }

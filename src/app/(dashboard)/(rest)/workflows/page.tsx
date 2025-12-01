@@ -5,7 +5,7 @@ import {
   WorkFlowsList
 } from "@/features/workflows/components/workflows";
 import { WorkflowParamsLoader } from "@/features/workflows/server/params-loader";
-import { prefetchWokflows } from "@/features/workflows/server/prefetch";
+import { prefetchWorkflows } from "@/features/workflows/server/prefetch";
 import { requireAuth } from "@/lib/auth-utils";
 import { HydrateClient } from "@/trpc/server";
 import { SearchParams } from "nuqs/server";
@@ -23,7 +23,7 @@ const WorkflowPage = async ({ searchParams }: props) => {
 
   const params = await WorkflowParamsLoader(searchParams);
 
-  prefetchWokflows(params);
+  prefetchWorkflows(params);
 
 
   return (
