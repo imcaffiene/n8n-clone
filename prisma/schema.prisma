@@ -77,7 +77,7 @@ model WorkFlow {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  node        Node[]
+  nodes       Node[]
   connections Connection[]
 
   User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -90,7 +90,6 @@ enum NodeType {
 
 model Node {
   id         String @id @default(cuid())
-  workflowId String
 
   name     String
   type     NodeType
@@ -100,9 +99,8 @@ model Node {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  workFlow    WorkFlow     @relation(fields: [workFlowId], references: [id], onDelete: Cascade)
-  workFlowId  String
-  connections Connection[]
+  workFlow   WorkFlow @relation(fields: [workFlowId], references: [id], onDelete: Cascade)
+  workFlowId String
 
   outputConnections Connection[] @relation("FromNode")
   inputConnections  Connection[] @relation("ToNode")
@@ -125,8 +123,6 @@ model Connection {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  node      Node?    @relation(fields: [nodeId], references: [id])
-  nodeId    String?
 
   @@unique([fromNodeId, toNodeId, fromOutput, toInput])
 }

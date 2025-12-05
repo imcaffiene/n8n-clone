@@ -1,6 +1,7 @@
 "use client";
 
 import { ErrorView, LoadingView } from "@/components/entity-component";
+import { nodeComponent } from "@/config/node-components";
 import { useSuspenseWorkflowsById } from "@/features/workflows/hooks/use-workflows";
 import {
     ReactFlow,
@@ -14,25 +15,14 @@ import {
     Connection,
     Background,
     Controls,
-    MiniMap
+    MiniMap,
+    Panel
 } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
 import { useCallback, useState } from "react";
+import { AddNodeButton } from "./addNodeButton";
 
-// Nodes = Processing steps
-const initialNodes = [
-    {
-        id: 'n1',
-        position: { x: 0, y: 0 },
-        data: { label: 'Node 1' }
-    },
-    {
-        id: 'n2',
-        position: { x: 0, y: 100 },
-        data: { label: 'Node 2' }
-    },
-];
 
 //Edges = Connection b/t step
 const initialEdges = [{ id: 'n1-n2', source: 'n1', target: 'n2' }];
@@ -41,8 +31,8 @@ const initialEdges = [{ id: 'n1-n2', source: 'n1', target: 'n2' }];
 export const Editor = ({ workflowId }: { workflowId: string; }) => {
     const { data: workflow } = useSuspenseWorkflowsById(workflowId);
 
-    const [nodes, setNodes] = useState<Node[]>(initialNodes);
-    const [edges, setEdges] = useState<Edge[]>(initialEdges);
+    const [nodes, setNodes] = useState<Node[]>(workflow.nodes);
+    const [edges, setEdges] = useState<Edge[]>(workflow.edges);
 
     const onNodesChange = useCallback(
         (changes: NodeChange[]) => setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
@@ -65,12 +55,15 @@ export const Editor = ({ workflowId }: { workflowId: string; }) => {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
+                nodeTypes={nodeComponent}
                 fitView
-
             >
                 <Background />
                 <Controls />
                 <MiniMap />
+                <Panel position="top-right">
+                    <AddNodeButton />
+                </Panel>
             </ReactFlow>
         </div>
     );
