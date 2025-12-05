@@ -77,11 +77,10 @@ model WorkFlow {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  User        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
   nodes       Node[]
   connections Connection[]
-
-  User   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String
 }
 
 enum NodeType {
@@ -89,7 +88,7 @@ enum NodeType {
 }
 
 model Node {
-  id         String @id @default(cuid())
+  id String @id @default(cuid())
 
   name     String
   type     NodeType
@@ -109,8 +108,8 @@ model Node {
 model Connection {
   id String @id @default(cuid())
 
-  workFlow   WorkFlow? @relation(fields: [workFlowId], references: [id], onDelete: Cascade)
-  workFlowId String?
+  workFlow   WorkFlow @relation(fields: [workFlowId], references: [id], onDelete: Cascade)
+  workFlowId String
 
   fromNodeId String
   fromNode   Node   @relation("FromNode", fields: [fromNodeId], references: [id], onDelete: Cascade)
