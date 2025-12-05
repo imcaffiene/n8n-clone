@@ -1,6 +1,6 @@
 import { Editor, EditorError, EditorLoading } from "@/features/editor/components/editor";
 import { EditorHeader } from "@/features/editor/components/editorHeader";
-import { prefetchWokflowsById } from "@/features/workflows/server/prefetch";
+import { prefetchWorkflowsById } from "@/features/workflows/server/prefetch";
 import { requireAuth } from "@/lib/auth-utils";
 import { HydrateClient } from "@/trpc/server";
 import { Suspense } from "react";
@@ -17,7 +17,7 @@ const WorkflowIdPage = async ({ params }: PageProps) => {
     await requireAuth();
 
     const { workflowId } = await params;
-    prefetchWokflowsById(workflowId);
+    prefetchWorkflowsById(workflowId);
 
     return (
         <HydrateClient>
