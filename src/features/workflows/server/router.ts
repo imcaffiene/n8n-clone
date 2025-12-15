@@ -34,13 +34,13 @@ export const workflowsRouter = () =>
           data: {
             name: input?.name || generateSlug(3),
             userId: ctx.auth.user.id,
-            nodes:{
-              create:{
-                type:NodeType.INITIAL, //starting point
-                position:{x:0, y:0}, //canvas position
-                name:NodeType.INITIAL //name="INITIAL"
-              }
-            }
+            nodes: {
+              create: {
+                type: NodeType.INITIAL, //starting point
+                position: { x: 0, y: 0 }, //canvas position
+                name: NodeType.INITIAL, //name="INITIAL"
+              },
+            },
           },
         });
       }),
@@ -53,6 +53,74 @@ export const workflowsRouter = () =>
             id: input.id,
             userId: ctx.auth.user.id,
           },
+        });
+      }),
+
+    updateCanvas: protectedProcedure
+      .input(
+        z.object({
+          id: z.string(), // workflow ID
+          nodes: z.array(
+            z.object({
+              id: z.string(), // nodeId (React Flow node.id)
+              type: z.string().nullish(), // "MANUAL_TRIGGER", "HTTP_REQUEST",
+              position: z.object({ x: z.number(), y: z.number() }), //Canvas coordinates {x, y}
+              data: z.record(z.string(), z.any()).optional(), //Custom node data (HTTP URL, email config, etc.)
+            })
+          ),
+          // Array of connections between nodes
+          edges: z.array(
+            z.object({
+              source: z.string(), //from node ID
+              target: z.string(), // to node ID
+              sourceHandle: z.string().nullish(), // Output port name
+              targetHandle: z.string().nullish(), //Input port name
+            })
+          ),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { id, nodes, edges } = input;
+
+        const workflow = await prisma.workFlow.findFirstOrThrow({
+          where: { id, userId: ctx.auth.user.id },
+        });
+
+        //database transaction
+        return await prisma.$transaction(async (tx) => {
+          await tx.node.deleteMany({
+            //
+            where: { workFlowId: id },
+          });
+
+          await tx.node.createMany({
+            data: nodes.map((node) => ({
+              id: node.id,
+              workFlowId: id,
+              name: node.type || "unknown",
+              type: node.type as NodeType,
+              position: node.position,
+              data: node.data || {},
+            })),
+          });
+
+          await tx.connection.createMany({
+            data: edges.map((edge) => ({
+              workFlowId: id,
+              fromNodeId: edge.source,
+              toNodeId: edge.target,
+              fromOutput: edge.sourceHandle || "main",
+              toInput: edge.targetHandle || "main",
+            })),
+          });
+
+          //update work flow timestamps
+          await tx.workFlow.update({
+            where: { id },
+            data: { updatedAt: new Date() },
+          });
+
+          return workflow;
         });
       }),
 
@@ -72,41 +140,40 @@ export const workflowsRouter = () =>
 
     getById: protectedProcedure
       .input(z.object({ id: z.string() }))
-      .query(async({ ctx, input }) => {
-        const workflow=  await prisma.workFlow.findUniqueOrThrow({
+      .query(async ({ ctx, input }) => {
+        const workflow = await prisma.workFlow.findUniqueOrThrow({
           where: {
             id: input.id,
             userId: ctx.auth.user.id,
           },
-          include:{
-            nodes:true,
-            connections:true
-          }
+          include: {
+            nodes: true,
+            connections: true,
+          },
         });
 
-        
         //Transform nodes for React Flow
-        const nodes:Node[] = workflow.nodes.map((node)=>({
-          id:node.id,
-          type:node.type,
-          position:node.position as {x:number,y:number},
-          data:(node.data as Record<string,unknown>) || {}
-        }))
+        const nodes: Node[] = workflow.nodes.map((node) => ({
+          id: node.id,
+          type: node.type,
+          position: node.position as { x: number; y: number },
+          data: (node.data as Record<string, unknown>) || {},
+        }));
 
-        const edges:Edge[] = workflow.connections.map((connection)=>({
-          id:connection.id,
-          source:connection.fromNodeId,
-          target:connection.toNodeId,
-          sourceHandle:connection.fromOutput,
-          targetHandle:connection.toInput
-        }))
+        const edges: Edge[] = workflow.connections.map((connection) => ({
+          id: connection.id,
+          source: connection.fromNodeId,
+          target: connection.toNodeId,
+          sourceHandle: connection.fromOutput,
+          targetHandle: connection.toInput,
+        }));
 
-        return{
-          id:workflow.id,
-          name:workflow.name,
+        return {
+          id: workflow.id,
+          name: workflow.name,
           nodes,
-          edges
-        }
+          edges,
+        };
       }),
 
     getAll: protectedProcedure
@@ -168,63 +235,3 @@ export const workflowsRouter = () =>
         };
       }),
   });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// ┌─────────────────────────────────────────────────────────────────────────────┐
-// │                           CLIENT (React)                                     │
-// ├─────────────────────────────────────────────────────────────────────────────┤
-// │                                                                              │
-// │  trpc.workflows.create.useMutation()                                        │
-// │  trpc.workflows.remove.useMutation()                                        │
-// │  trpc.workflows.update.useMutation()                                        │
-// │  trpc.workflows.getById.useQuery({ id: "..." })                             │
-// │  trpc.workflows.getAll.useQuery({ page: 1, pageSize: 10 })                  │
-// │                                                                              │
-// └────────────────────────────────┬────────────────────────────────────────────┘
-//                                  │
-//                                  │ HTTP Request (JSON-RPC)
-//                                  ▼
-// ┌─────────────────────────────────────────────────────────────────────────────┐
-// │                        tRPC Router (workflowsRouter)                         │
-// ├─────────────────────────────────────────────────────────────────────────────┤
-// │                                                                              │
-// │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-// │  │   create    │  │   remove    │  │   update    │  │   getById   │        │
-// │  │ (premium)   │  │ (protected) │  │ (protected) │  │ (protected) │        │
-// │  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘        │
-// │         │                │                │                │                │
-// │         │                │                │                │                │
-// │         └────────────────┴────────────────┴────────────────┘                │
-// │                                   │                                         │
-// │                                   ▼                                         │
-// │                          ┌───────────────┐                                  │
-// │                          │    getAll     │                                  │
-// │                          │ (protected)   │                                  │
-// │                          │ + pagination  │                                  │
-// │                          └───────────────┘                                  │
-// │                                                                              │
-// └────────────────────────────────┬────────────────────────────────────────────┘
-//                                  │
-//                                  │ Prisma ORM
-//                                  ▼
-// ┌─────────────────────────────────────────────────────────────────────────────┐
-// │                        PostgreSQL Database                                   │
-// │                                                                              │
-// │  WorkFlow table, Node table, Connection table                               │
-// └─────────────────────────────────────────────────────────────────────────────┘

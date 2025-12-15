@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   CircleCheckIcon,
@@ -6,35 +6,52 @@ import {
   Loader2Icon,
   OctagonXIcon,
   TriangleAlertIcon,
-} from "lucide-react"
-import { useTheme } from "next-themes"
-import { Toaster as Sonner, type ToasterProps } from "sonner"
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { Toaster as Sonner, type ToasterProps } from "sonner";
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  const { theme = "system" } = useTheme();
 
   return (
-    <Sonner
-      theme={theme as ToasterProps["theme"]}
-      className="toaster group"
-      icons={{
-        success: <CircleCheckIcon className="size-4" />,
-        info: <InfoIcon className="size-4" />,
-        warning: <TriangleAlertIcon className="size-4" />,
-        error: <OctagonXIcon className="size-4" />,
-        loading: <Loader2Icon className="size-4 animate-spin" />,
-      }}
-      style={
-        {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
-        } as React.CSSProperties
-      }
-      {...props}
-    />
-  )
-}
+    <>
+      <Sonner
+        theme={theme as ToasterProps["theme"]}
+        className="toaster group"
+        toastOptions={{
+          classNames: {
+            success: '!bg-[var(--success-bg)] !text-[var(--success-text)] !border-[var(--success-border)]',
+          },
+        }}
+        icons={{
+          success: <CircleCheckIcon className="size-4" />,
+          info: <InfoIcon className="size-4" />,
+          warning: <TriangleAlertIcon className="size-4" />,
+          error: <OctagonXIcon className="size-4" />,
+          loading: <Loader2Icon className="size-4 animate-spin" />,
+        }}
+        style={
+          {
+            "--normal-bg": "var(--popover)",
+            "--normal-text": "var(--popover-foreground)",
+            "--normal-border": "var(--border)",
+            "--border-radius": "var(--radius)",
+            "--success-bg": "var(--primary)", // Use primary brand color
+            "--success-text": "var(--primary-foreground)", // Use primary foreground for text
+            "--success-border": "var(--primary)", // Use primary color for border
+          } as React.CSSProperties
+        }
+        {...props}
+      />
+      <style jsx global>{`
+        .toaster .toast.success {
+          background-color: var(--success-bg) !important;
+          color: var(--success-text) !important;
+          border-color: var(--success-border) !important;
+        }
+      `}</style>
+    </>
+  );
+};
 
-export { Toaster }
+export { Toaster };
