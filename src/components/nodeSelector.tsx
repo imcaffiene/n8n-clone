@@ -78,7 +78,7 @@ export const NodeSelector = ({ children, onOpenChange, open }: NodeSelectorProps
             const flowPosition = screenToFlowPosition({
                 x: centerX + (Math.random() - 0.5) * 200,
                 y: centerY + (Math.random() - 0.5) * 200
-            }); // nodes don't stackn top of each other
+            }); // nodes don't stack on top of each other
 
             const newNode = {
                 id: createId(),
@@ -104,7 +104,7 @@ export const NodeSelector = ({ children, onOpenChange, open }: NodeSelectorProps
             <SheetContent side="right" className="w-full sm:max-w-md overflow-auto">
                 <SheetHeader>
                     <SheetTitle>
-                        What trigger this workflow?
+                        What triggers this workflow?
                     </SheetTitle>
                     <SheetDescription>
                         A trigger is a step that starts your workflow.
@@ -116,10 +116,11 @@ export const NodeSelector = ({ children, onOpenChange, open }: NodeSelectorProps
                         const Icon = nodeType.icon;
 
                         return (
-                            <div
+                            <button
                                 key={nodeType.type}
+                                type="button"
                                 onClick={() => handleNodeSelector(nodeType)}
-                                className="w-full justify-start h-auto py-5 px-4 rounded-none cursor-pointer border-l-2 border-transparent hover:border-l-primary"
+                                className="w-full justify-start h-auto py-5 px-4 rounded-none cursor-pointer border-l-2 border-transparent hover:border-l-primary text-left focus:outline-none focus:border-l-primary transition-colors"
                             >
                                 <div className="flex items-center gap-6 w-full overflow-hidden">
                                     {typeof Icon === 'string' ? (
@@ -137,7 +138,7 @@ export const NodeSelector = ({ children, onOpenChange, open }: NodeSelectorProps
                                         <span className="text-xs text-muted-foreground">{nodeType.description}</span>
                                     </div>
                                 </div>
-                            </div>
+                            </button>
                         );
                     })}
                 </div>
@@ -149,10 +150,11 @@ export const NodeSelector = ({ children, onOpenChange, open }: NodeSelectorProps
                         const Icon = nodeType.icon;
 
                         return (
-                            <div
+                            <button
                                 key={nodeType.type}
+                                type="button"
                                 onClick={() => handleNodeSelector(nodeType)}
-                                className="w-full justify-start h-auto py-5 px-4 rounded-none cursor-pointer border-l-2 border-transparent hover:border-l-primary"
+                                className="w-full justify-start h-auto py-5 px-4 rounded-none cursor-pointer border-l-2 border-transparent hover:border-l-primary text-left focus:outline-none focus:border-l-primary transition-colors"
                             >
                                 <div className="flex items-center gap-6 w-full overflow-hidden">
                                     {typeof Icon === 'string' ? (
@@ -170,7 +172,7 @@ export const NodeSelector = ({ children, onOpenChange, open }: NodeSelectorProps
                                         <span className="text-xs text-muted-foreground">{nodeType.description}</span>
                                     </div>
                                 </div>
-                            </div>
+                            </button>
                         );
                     })}
                 </div>

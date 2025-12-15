@@ -1,6 +1,6 @@
-"use Client";
+"use client";
 
-import { NodeProps, Position } from "@xyflow/react";
+import { NodeProps, Position, useReactFlow } from "@xyflow/react";
 import { LucideIcon } from "lucide-react";
 import { memo, ReactNode } from "react";
 import { WorkflowNodes } from "@/components/workflowNodes";
@@ -29,7 +29,23 @@ export const BaseExecutionNode = memo(
     onDoubleClick
   }: BaseExecutionNodeProps) => {
 
-    const handleDelete = () => { };
+    const { setNodes, setEdges } = useReactFlow();
+
+    const handleDelete = () => {
+      setNodes((currentNodes) => {
+        const updateNodes = currentNodes.filter(
+          (node) => node.id !== id);
+        return updateNodes;
+      });
+
+      setEdges((currentEdges) => {
+        const updateEdges = currentEdges.filter(
+          (edge) => edge.source !== id && edge.target !== id
+        );
+
+        return updateEdges;
+      });
+    };
 
     return (
       <WorkflowNodes
