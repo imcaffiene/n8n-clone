@@ -23,24 +23,21 @@ import { editorAtom } from "../store/atoms";
 
 
 
-
-
-
-
-
+// Save button that captures the current React Flow canvas state (nodes + edges) and saves it to the database
 
 export const EditorSaveButton = ({ workflowId }: { workflowId: string; }) => {
-    const editor = useAtomValue(editorAtom);
-    const saveWorkflow = useUpdateWorkflowCanvas();
+    const editor = useAtomValue(editorAtom); //read reactflow instance from atoms
+
+    const saveWorkflow = useUpdateWorkflowCanvas(); //Get the mutation hook for saving workflow
 
     const handleSave = () => {
+        // exit early if editor not initialized
         if (!editor) {
             return;
         }
 
-
-        const nodes = editor?.getNodes();
-        const edges = editor?.getEdges();
+        const nodes = editor.getNodes(); 
+        const edges = editor.getEdges(); 
 
         saveWorkflow.mutate({
             id: workflowId,
