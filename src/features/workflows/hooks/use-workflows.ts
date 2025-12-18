@@ -93,7 +93,7 @@ export const useUpdateWorkflowCanvas = () => {
     trpc.workflows.updateCanvas.mutationOptions({
       onSuccess: (data) => {
         toast.success(`Workflow "${data.name}" saved`);
-        queryClient.invalidateQueries(trpc.workflows.getAll.queryOptions({}));
+        queryClient.invalidateQueries(trpc.workflows.getAll.queryOptions({})); // Mark queries as stale → refetch
         queryClient.invalidateQueries(
           trpc.workflows.getById.queryOptions({ id: data.id })
         );
