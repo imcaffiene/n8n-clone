@@ -2,7 +2,6 @@
 
 import {
   CreditCardIcon,
-  FolderOpenIcon,
   HistoryIcon,
   KeyIcon,
   LogOutIcon,
@@ -26,6 +25,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { useHasActiveSubscription } from "@/features/subscriptions/hooks/use-subscriptions";
+import { WorkflowIcon } from "./animate-ui/icons/workflow";
 
 const menuItems = [
   {
@@ -33,7 +33,7 @@ const menuItems = [
     items: [
       {
         title: "WorkFlows",
-        icon: FolderOpenIcon,
+        icon: WorkflowIcon,
         url: "/workflows",
       },
       {

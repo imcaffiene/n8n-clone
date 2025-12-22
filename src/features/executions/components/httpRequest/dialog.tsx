@@ -21,15 +21,13 @@ import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-export type FormType = z.infer<typeof formSchema>;
+export type HttpRequestFormValue = z.infer<typeof formSchema>;
 
 interface HttpRequestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit: (value: z.infer<typeof formSchema>) => void;
-  defaultEndpoint?: string;
-  defaultMethod?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  defaultBody?: string;
+  defaultValues?: Partial<HttpRequestFormValue>;
 }
 
 const formSchema = z.object({
@@ -42,29 +40,27 @@ export const HttpRequestDialog = ({
   onOpenChange,
   open,
   onSubmit,
-  defaultBody = "",
-  defaultEndpoint = "",
-  defaultMethod = "GET"
+  defaultValues = {}
 }: HttpRequestDialogProps) => {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      endPoint: defaultEndpoint,
-      body: defaultBody,
-      method: defaultMethod
+      endPoint: defaultValues.endPoint || "",
+      body: defaultValues.body || "",
+      method: defaultValues.method || "GET"
     }
   });
 
   useEffect(() => {
     if (open) {
       form.reset({
-        endPoint: defaultEndpoint,
-        body: defaultBody,
-        method: defaultMethod
+        endPoint: defaultValues.endPoint || " ",
+        body: defaultValues.body || "",
+        method: defaultValues.method || "GET"
       });
     }
-  }, [open, defaultBody, defaultEndpoint, defaultMethod, form]);
+  }, [open, defaultValues, form]);
 
   const watchMethod = form.watch("method");
   const showBodyField = ["PUT", "POST", "PATCH"].includes(watchMethod);
@@ -151,7 +147,7 @@ export const HttpRequestDialog = ({
                     <FormControl>
                       <Textarea
                         placeholder={
-                          '{\n "userId":"{{httpsResponse.data.id}}",\n"name":"{{httpsResponse.data.name}}",\n "items":"{{httpsResponse.data.items}}"\n}'
+                          '{\n "userId":"{{httpResponse.data.id}}",\n"name":"{{httpResponse.data.name}}",\n "items":"{{httpResponse.data.items}}"\n}'
                         }
                         {...field}
                         className='min-h-[120px] font-mono text-sm'

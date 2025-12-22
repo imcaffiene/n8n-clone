@@ -23,12 +23,12 @@ export const ManualTriggerDialog = ({ onOpenChange, open }: ManualTriggerDialogP
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup>
         <DialogHeader>
-          <DialogTitle> Mannual Trigger </DialogTitle>
-          <DialogDescription> Configure settings for the mannual trigger node. </DialogDescription>
+          <DialogTitle> Manual Trigger </DialogTitle>
+          <DialogDescription> Configure settings for the manual trigger node. </DialogDescription>
         </DialogHeader>
 
         <div className='py-4'>
-          <p className='text-sm text-muted-foreground'> Mannual trigger</p>
+          <p className='text-sm text-muted-foreground'> Manual trigger</p>
         </div>
       </DialogPopup>
     </Dialog>

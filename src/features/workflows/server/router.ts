@@ -9,6 +9,7 @@ import { z } from "zod";
 import { PAGINATION } from "@/config/constant";
 import { NodeType } from "@prisma/client";
 import { Edge, Node } from "@xyflow/react";
+import { inngest } from "@/inngest/client";
 
 // Zod schemas for validation
 const updateWorkflowInput = z.object({
@@ -27,6 +28,24 @@ const CreateWorkflowInput = z.object({
 
 export const workflowsRouter = () =>
   createTRPCRouter({
+    execute: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const workflow = await prisma.workFlow.findFirstOrThrow({
+          where: {
+            id: input.id,
+            userId: ctx.auth.user.id,
+          },
+        });
+
+        await inngest.send({
+          name: "workflows/execute.workflow",
+          data: { workflowId: input.id },
+        });
+
+        return workflow;
+      }),
+
     create: premiumProcedure
       .input(CreateWorkflowInput.optional())
       .mutation(({ ctx, input }) => {

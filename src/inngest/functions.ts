@@ -1,31 +1,30 @@
-import { createPerplexity } from "@ai-sdk/perplexity";
+import { NonRetriableError } from "inngest";
 import { inngest } from "./client";
-import { generateText } from "ai";
+import prisma from "@/lib/prisma";
+import { topologicalSort } from "./utils";
 
-const perplexity = createPerplexity({
-  apiKey: process.env.PERPLEXITY_API_KEY || "",
-});
-
-export const helloWorld = inngest.createFunction(
-  { id: "sumit-ai" },
-  { event: "sumit.ai" },
+export const executeWorkflow = inngest.createFunction(
+  { id: "execute-workflow" },
+  { event: "workflows/execute.workflow" },
   async ({ event, step }) => {
-    const { steps } = await step.ai.wrap(
-      "perplexity-generated-text",
-      generateText,
-      {
-        system:
-          "You are a helpful assistant that provides concise information about the latest developments in quantum computing and software engineering.",
-        model: perplexity("sonar"),
-        prompt: "What are the latest developments in quantum computing?",
+    const workflowId = event.data.workflowId;
 
-        experimental_telemetry: {
-          isEnabled: true,
-          recordInputs: true,
-          recordOutputs: true,
+    if (!workflowId) {
+      throw new NonRetriableError("WorkflowId is missing");
+    }
+
+    const sortedNodes = await step.run("prepare-workflow", async () => {
+      const workflow = await prisma.workFlow.findFirstOrThrow({
+        where: { id: workflowId },
+        include: {
+          nodes: true,
+          connections: true,
         },
-      }
-    );
-    return steps;
+      });
+
+      return topologicalSort(workflow.nodes, workflow.connections);
+    });
+
+    return { sortedNodes };
   }
 );
