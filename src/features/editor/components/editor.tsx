@@ -20,10 +20,12 @@ import {
 } from '@xyflow/react';
 
 import '@xyflow/react/dist/style.css';
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AddNodeButton } from "./addNodeButton";
 import { useSetAtom } from "jotai";
 import { editorAtom } from "../store/atoms";
+import { NodeType } from "@prisma/client";
+import { ExecuteWorkFlowButton } from "./executeWorkflowButton";
 
 
 export const Editor = ({ workflowId }: { workflowId: string; }) => {
@@ -48,6 +50,10 @@ export const Editor = ({ workflowId }: { workflowId: string; }) => {
         [],
     );
 
+    const hasManualTrigger = useMemo(() => {
+        return nodes.some((node) => node.type === NodeType.MANUAL_TRIGGER);
+    }, [nodes]);
+
     return (
         <div className="size-full">
             <ReactFlow
@@ -71,6 +77,12 @@ export const Editor = ({ workflowId }: { workflowId: string; }) => {
                 <Panel position="top-right">
                     <AddNodeButton />
                 </Panel>
+
+                {hasManualTrigger && (
+                    <Panel position="bottom-center">
+                        <ExecuteWorkFlowButton workflowId={workflowId} />
+                    </Panel>
+                )}
             </ReactFlow>
         </div>
     );

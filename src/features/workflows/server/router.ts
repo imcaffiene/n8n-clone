@@ -9,6 +9,7 @@ import { z } from "zod";
 import { PAGINATION } from "@/config/constant";
 import { NodeType } from "@prisma/client";
 import { Edge, Node } from "@xyflow/react";
+import { inngest } from "@/inngest/client";
 
 // Zod schemas for validation
 const updateWorkflowInput = z.object({
@@ -27,6 +28,28 @@ const CreateWorkflowInput = z.object({
 
 export const workflowsRouter = () =>
   createTRPCRouter({
+    // EXECUTE - Start workflow execution in background
+    execute: protectedProcedure
+      .input(z.object({ id: z.string() }))
+      .mutation(async ({ input, ctx }) => {
+        const workflow = await prisma.workFlow.findFirstOrThrow({
+          where: {
+            id: input.id,
+            userId: ctx.auth.user.id,
+          },
+        });
+
+        // Send event to Inngest for background execution
+        // This immediately returns while workflow runs async
+        await inngest.send({
+          name: "workflows/execute.workflow",
+          data: { workflowId: input.id },
+        });
+
+        return workflow;
+      }),
+
+    // CREATE - Create new blank workflow with INITIAL node
     create: premiumProcedure
       .input(CreateWorkflowInput.optional())
       .mutation(({ ctx, input }) => {
@@ -45,6 +68,7 @@ export const workflowsRouter = () =>
         });
       }),
 
+    // REMOVE - Delete workflow and all its nodes/connections
     remove: protectedProcedure
       .input(deleteWorkflowInput)
       .mutation(({ ctx, input }) => {
@@ -56,6 +80,7 @@ export const workflowsRouter = () =>
         });
       }),
 
+    // UPDATE CANVAS - Save node positions, types, and connections
     updateCanvas: protectedProcedure
       .input(
         z.object({
@@ -124,6 +149,7 @@ export const workflowsRouter = () =>
         });
       }),
 
+    // UPDATE - Update workflow metadata (name only for now)
     update: protectedProcedure
       .input(updateWorkflowInput)
       .mutation(({ ctx, input }) => {
@@ -138,6 +164,7 @@ export const workflowsRouter = () =>
         });
       }),
 
+    // GET BY ID - Load workflow with nodes and connections for editor
     getById: protectedProcedure
       .input(z.object({ id: z.string() }))
       .query(async ({ ctx, input }) => {
@@ -176,6 +203,7 @@ export const workflowsRouter = () =>
         };
       }),
 
+    // GET ALL - List workflows with pagination and search
     getAll: protectedProcedure
       .input(
         z.object({
@@ -220,9 +248,10 @@ export const workflowsRouter = () =>
           }),
         ]);
 
-        const totalPage = Math.ceil(totalCount / pageSize);
-        const hasNextPage = page < totalPage;
-        const hasPrevPage = page > 1;
+        // Calculate pagination metadata
+        const totalPage = Math.ceil(totalCount / pageSize); // Total pages
+        const hasNextPage = page < totalPage; // Can go forward?
+        const hasPrevPage = page > 1; // Can go back?
 
         return {
           item,
