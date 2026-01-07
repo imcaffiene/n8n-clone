@@ -7,7 +7,7 @@ import {
 import { toast } from "sonner";
 import { useWorkflowParams } from "./use-workflow-params";
 
-// Hook to fetch all workflows with suspense
+// Hook to fetch all workflows with suspense ---
 
 export const useSuspenseWorkflows = () => {
   const trpc = useTRPC();
@@ -39,7 +39,7 @@ export const useCreateWorkflow = () => {
   );
 };
 
-// hook to delete workflow
+// hook to delete workflow ---
 
 export const useDeleteWorkflow = () => {
   const trpc = useTRPC();
@@ -61,7 +61,7 @@ export const useDeleteWorkflow = () => {
   );
 };
 
-//hook to update workflow name
+//hook to update workflow name ----
 
 export const useUpdateWorkflowName = () => {
   const trpc = useTRPC();
@@ -83,7 +83,7 @@ export const useUpdateWorkflowName = () => {
   );
 };
 
-// hook to update wokflow canvas
+// hook to update wokflow canvas ---- 
 
 export const useUpdateWorkflowCanvas = () => {
   const trpc = useTRPC();

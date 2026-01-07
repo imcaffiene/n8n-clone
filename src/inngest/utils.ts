@@ -7,7 +7,7 @@ export const topologicalSort = (
 ): Node[] => {
   // if no connection
   if (connections.length === 0) {
-    return nodes;
+    return nodes; // No rules, any order is fine
   }
 
   //create edge for toposort
