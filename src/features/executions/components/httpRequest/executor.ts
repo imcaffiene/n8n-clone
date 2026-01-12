@@ -3,6 +3,7 @@ import { NonRetriableError } from "inngest";
 import ky, { type Options as KyOptions } from "ky";
 
 type HttpRequestData = {
+  variableName?: string;
   endPoint?: string;
   method?: "GET" | "PUT" | "POST" | "PATCH" | "DELETE";
   body?: string;
@@ -19,6 +20,10 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
     throw new NonRetriableError("HTTP request node: No endpoint configured");
   }
 
+  if (!data.variableName) {
+    throw new NonRetriableError("Variable name is not configured");
+  }
+
   const result = await step.run("http-request", async () => {
     const endpoint = data.endPoint!;
     const method = data.method || "GET";
@@ -27,6 +32,9 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
     if (["POST", "PUT", "PATCH"].includes(method)) {
       options.body = data.body;
+      options.headers = {
+        "Content-type": "application/json",
+      };
     }
 
     const response = await ky(endpoint, options);
@@ -35,13 +43,17 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
       ? await response.json()
       : await response.text();
 
-    return {
-      ...context,
+    const payload = {
       httpResponse: {
         status: response.status,
         statusText: response.statusText,
         data: responseData,
       },
+    };
+
+    return {
+      ...context,
+      [data.variableName as string]: payload,
     };
   });
 
@@ -65,29 +77,16 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 // ┌──────────────────────────────────────────────────────────────────────┐
-// │              HTTP REQUEST NODE EXECUTION FLOW                         │
+// │        HTTP REQUEST NODE WITH VARIABLE NAMES - EXECUTION FLOW         │
 // └──────────────────────────────────────────────────────────────────────┘
 
 // STEP 1: Node Configuration (from React Flow)
 // ────────────────────────────────────────────
 // User configured node with:
 // {
-//   endpoint: "https://jsonplaceholder.typicode.com/users/1",
+//   variableName: "userInfo",  ← NEW: User-defined name
+//   endPoint: "https://jsonplaceholder.typicode.com/users/1",
 //   method: "GET",
 //   body: undefined
 // }
@@ -98,11 +97,12 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 // ────────────────────────
 // httpRequestExecutor({
 //   data: {
-//     endpoint: "https://jsonplaceholder.typicode.com/users/1",
+//     variableName: "userInfo",
+//     endPoint: "https://jsonplaceholder.typicode.com/users/1",
 //     method: "GET"
 //   },
 //   nodeId: "node-2",
-//   context: {}, // Empty if first action node
+//   context: {},
 //   step: inngestStepHelper
 // })
 
@@ -110,7 +110,8 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
 // STEP 3: Validate Configuration
 // ───────────────────────────────
-// ✅ endpoint exists? YES
+// ✅ endPoint exists? YES
+// ✅ variableName exists? YES  ← NEW validation
 // Continue...
 
 //     ↓
@@ -122,7 +123,7 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 // options = { method: "GET" }
 
 // Is method POST/PUT/PATCH? NO
-// → Don't add body
+// → Don't add body or headers
 
 //     ↓
 
@@ -159,11 +160,9 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
 //     ↓
 
-// STEP 7: Add to Context
+// STEP 7: Create Payload
 // ───────────────────────
-// Return:
-// {
-//   ...context, // Spread existing context (empty in this case)
+// payload = {
 //   httpResponse: {
 //     status: 200,
 //     statusText: "OK",
@@ -178,22 +177,42 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
 //     ↓
 
-// STEP 8: Return to Orchestrator
-// ───────────────────────────────
-// Orchestrator receives updated context:
+// STEP 8: Add to Context with Variable Name  ← NEW
+// ────────────────────────────────────────────
+// variableName = "userInfo"
+
+// Return:
 // {
-//   httpResponse: {
-//     status: 200,
-//     statusText: "OK",
-//     data: { ... }
+//   ...context,
+//   userInfo: {  ← Dynamic key from variableName
+//     httpResponse: {
+//       status: 200,
+//       statusText: "OK",
+//       data: { ... }
+//     }
 //   }
 // }
 
 //     ↓
 
-// STEP 9: Pass to Next Node
-// ──────────────────────────
-// Next node (e.g., Email node) can now access:
-// - context.httpResponse.data.name
-// - context.httpResponse.data.email
-// - etc.
+// STEP 9: Return to Orchestrator
+// ───────────────────────────────
+// Orchestrator receives updated context:
+// {
+//   userInfo: {
+//     httpResponse: {
+//       status: 200,
+//       statusText: "OK",
+//       data: { ... }
+//     }
+//   }
+// }
+
+//     ↓
+
+// STEP 10: Pass to Next Node
+// ───────────────────────────
+// Next node can access:
+// - context.userInfo.httpResponse.data.name
+// - context.userInfo.httpResponse.data.email
+// - context.userInfo.httpResponse.status

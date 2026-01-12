@@ -1,8 +1,8 @@
 import { NodeExecutor } from "@/features/executions/types";
 
-type MannualTriggerData = Record<string, unknown>;
+type ManualTriggerData = Record<string, unknown>;
 
-export const mannualTriggerExecutor: NodeExecutor<MannualTriggerData> = async ({
+export const manualTriggerExecutor: NodeExecutor<ManualTriggerData> = async ({
   nodeId,
   context,
   step,
