@@ -1,10 +1,20 @@
 import { NodeExecutor } from "@/features/executions/types";
 import { NonRetriableError } from "inngest";
 import ky, { type Options as KyOptions } from "ky";
+import Handlebars from "handlebars";
+
+// Register custom Handlebars helper for JSON stringification
+Handlebars.registerHelper("json", (context) => {
+  const jsonString = JSON.stringify(context, null, 2);
+  const safeString = new Handlebars.SafeString(jsonString);
+
+  return safeString;
+});
 
 type HttpRequestData = {
-  endPoint?: string;
-  method?: "GET" | "PUT" | "POST" | "PATCH" | "DELETE";
+  variableName: string;
+  endPoint: string;
+  method: "GET" | "PUT" | "POST" | "PATCH" | "DELETE";
   body?: string;
 };
 
@@ -14,19 +24,44 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
   context, //data from prev node
   step,
 }) => {
-  // if not configured
+  // ============================================================================
+  // VALIDATION: Check all required fields
+  // ============================================================================
   if (!data.endPoint) {
     throw new NonRetriableError("HTTP request node: No endpoint configured");
   }
 
+  if (!data.variableName) {
+    throw new NonRetriableError("Variable name is not configured");
+  }
+
+  if (!data.method) {
+    throw new NonRetriableError("Method is not configured");
+  }
+
+  if (["POST", "PUT", "PATCH"].includes(data.method) && !data.body) {
+    throw new NonRetriableError(
+      `Request body is required for ${data.method} requests. ` +
+        `Please configure the request body in the node settings.`
+    );
+  }
+
+  // EXECUTION: Make HTTP request with template rendering
+
   const result = await step.run("http-request", async () => {
-    const endpoint = data.endPoint!;
-    const method = data.method || "GET";
+    // Render endpoint URL template
+    const endpoint = Handlebars.compile(data.endPoint)(context);
+    const method = data.method;
 
     const options: KyOptions = { method };
 
     if (["POST", "PUT", "PATCH"].includes(method)) {
-      options.body = data.body;
+      const resolved = Handlebars.compile(data.body || "{}")(context);
+      JSON.parse(resolved);
+      options.body = resolved;
+      options.headers = {
+        "Content-type": "application/json",
+      };
     }
 
     const response = await ky(endpoint, options);
@@ -35,13 +70,17 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
       ? await response.json()
       : await response.text();
 
-    return {
-      ...context,
+    const payload = {
       httpResponse: {
         status: response.status,
         statusText: response.statusText,
         data: responseData,
       },
+    };
+
+    return {
+      ...context,
+      [data.variableName]: payload,
     };
   });
 
@@ -79,15 +118,21 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
 
 
+
+
+
+
+
 // ┌──────────────────────────────────────────────────────────────────────┐
-// │              HTTP REQUEST NODE EXECUTION FLOW                         │
+// │        HTTP REQUEST NODE WITH VARIABLE NAMES - EXECUTION FLOW         │
 // └──────────────────────────────────────────────────────────────────────┘
 
 // STEP 1: Node Configuration (from React Flow)
 // ────────────────────────────────────────────
 // User configured node with:
 // {
-//   endpoint: "https://jsonplaceholder.typicode.com/users/1",
+//   variableName: "apiResponse",     ← NEW: User-defined variable name
+//   endPoint: "{{baseUrl}}/users/{{userId}}",  ← NEW: Template support
 //   method: "GET",
 //   body: undefined
 // }
@@ -98,37 +143,52 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 // ────────────────────────
 // httpRequestExecutor({
 //   data: {
-//     endpoint: "https://jsonplaceholder.typicode.com/users/1",
+//     variableName: "apiResponse",
+//     endPoint: "{{baseUrl}}/users/{{userId}}",
 //     method: "GET"
 //   },
 //   nodeId: "node-2",
-//   context: {}, // Empty if first action node
+//   context: {                    ← Contains template variables
+//     baseUrl: "https://api.example.com",
+//     userId: "123"
+//   },
 //   step: inngestStepHelper
 // })
 
 //     ↓
 
-// STEP 3: Validate Configuration
-// ───────────────────────────────
-// ✅ endpoint exists? YES
-// Continue...
+// STEP 3: Validation Phase
+// ────────────────────────
+// ✅ endPoint exists? YES (after template resolution)
+// ✅ variableName exists? YES 
+// ✅ method exists? YES
+// ✅ POST/PUT/PATCH has body? N/A for GET
+// All validations pass...
 
 //     ↓
 
-// STEP 4: Prepare Request
-// ───────────────────────
-// endpoint = "https://jsonplaceholder.typicode.com/users/1"
+// STEP 4: Template Rendering & Request Preparation
+// ──────────────────────────────────────────────────
+// endpoint = Handlebars.compile("{{baseUrl}}/users/{{userId}}")({
+//   baseUrl: "https://api.example.com",
+//   userId: "123"
+// })
+// → endpoint = "https://api.example.com/users/123"
+
 // method = "GET"
 // options = { method: "GET" }
 
 // Is method POST/PUT/PATCH? NO
-// → Don't add body
+// → Skip body processing
 
 //     ↓
 
-// STEP 5: Make HTTP Request
-// ──────────────────────────
-// await ky("https://jsonplaceholder.typicode.com/users/1", { method: "GET" })
+// STEP 5: Execute HTTP Request (Wrapped in Step)
+// ──────────────────────────────────────────────
+// await step.run("http-request", async () => {
+//   const response = await ky("https://api.example.com/users/123", { method: "GET" });
+//   return result;
+// })
 
 //     ↓ (Network call happens)
 
@@ -136,64 +196,118 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 //   Status: 200 OK
 //   Headers: { "content-type": "application/json; charset=utf-8" }
 //   Body: {
-//     "id": 1,
-//     "name": "Leanne Graham",
-//     "username": "Bret",
-//     "email": "Sincere@april.biz"
+//     "id": 123,
+//     "name": "John Doe",
+//     "email": "john@example.com"
 //   }
 
 //     ↓
 
-// STEP 6: Parse Response
-// ──────────────────────
+// STEP 6: Response Processing & Content Type Detection
+// ─────────────────────────────────────────────────────
 // contentType = "application/json; charset=utf-8"
-// contentType includes "application/json"? YES
+// contentType.includes("application/json")? YES
 // → Use response.json()
 
 // responseData = {
-//   id: 1,
-//   name: "Leanne Graham",
-//   username: "Bret",
-//   email: "Sincere@april.biz"
+//   id: 123,
+//   name: "John Doe", 
+//   email: "john@example.com"
 // }
 
 //     ↓
 
-// STEP 7: Add to Context
-// ───────────────────────
-// Return:
-// {
-//   ...context, // Spread existing context (empty in this case)
+// STEP 7: Create Standardized Response Payload
+// ──────────────────────────────────────────────
+// payload = {
 //   httpResponse: {
 //     status: 200,
 //     statusText: "OK",
 //     data: {
-//       id: 1,
-//       name: "Leanne Graham",
-//       username: "Bret",
-//       email: "Sincere@april.biz"
+//       id: 123,
+//       name: "John Doe",
+//       email: "john@example.com"
 //     }
 //   }
 // }
 
 //     ↓
 
-// STEP 8: Return to Orchestrator
-// ───────────────────────────────
-// Orchestrator receives updated context:
+// STEP 8: Dynamic Context Update with Variable Name
+// ───────────────────────────────────────────────────
+// variableName = "apiResponse"
+
+// Return updated context:
 // {
-//   httpResponse: {
-//     status: 200,
-//     statusText: "OK",
-//     data: { ... }
+//   ...context,                 ← Preserve existing context
+//   apiResponse: {              ← Dynamic key from user input
+//     httpResponse: {
+//       status: 200,
+//       statusText: "OK", 
+//       data: { ... }
+//     }
 //   }
 // }
 
 //     ↓
 
-// STEP 9: Pass to Next Node
-// ──────────────────────────
-// Next node (e.g., Email node) can now access:
-// - context.httpResponse.data.name
-// - context.httpResponse.data.email
-// - etc.
+// STEP 9: Return to Orchestrator
+// ───────────────────────────────
+// Orchestrator receives:
+// {
+//   baseUrl: "https://api.example.com",
+//   userId: "123",
+//   apiResponse: {
+//     httpResponse: {
+//       status: 200,
+//       statusText: "OK",
+//       data: {
+//         id: 123,
+//         name: "John Doe",
+//         email: "john@example.com"
+//       }
+//     }
+//   }
+// }
+
+//     ↓
+
+// STEP 10: Next Node Access Pattern
+// ──────────────────────────────────
+// Next node can now access:
+// - context.apiResponse.httpResponse.data.name    ← Via user-defined variable
+// - context.apiResponse.httpResponse.data.email
+// - context.apiResponse.httpResponse.status
+// - context.baseUrl                               ← From original context
+// - context.userId                                ← From original context
+
+
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │                        ERROR HANDLING FLOW                           │
+// └──────────────────────────────────────────────────────────────────────┘
+
+// For POST/PUT/PATCH requests without body:
+// If data.method = "POST" and !data.body:
+// → Throws: "Request body is required for POST requests..."
+
+// For missing required fields:
+// If !data.variableName → "Variable name is not configured"
+// If !data.endPoint → "HTTP request node: No endpoint configured"  
+// If !data.method → "Method is not configured"
+
+// For malformed JSON in body:
+// During body compilation and JSON.parse(resolved):
+// → Will throw parsing error if template renders invalid JSON
+
+
+// ┌──────────────────────────────────────────────────────────────────────┐
+// │                      TEMPLATE RENDERING EXAMPLE                      │
+// └──────────────────────────────────────────────────────────────────────┘
+
+// Original template: "{{baseUrl}}/users/{{userId}}"
+// Context: { baseUrl: "https://api.com", userId: 123 }
+// Result: "https://api.com/users/123"
+
+// For POST body template: "{{#json userData}}{{/json}}"
+// Context: { userData: { name: "John", age: 30 } }
+// Result: "{\n  \"name\": \"John\",\n  \"age\": 30\n}"
