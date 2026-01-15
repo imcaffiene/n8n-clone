@@ -5,9 +5,11 @@ import { memo, useState } from "react";
 import { BaseExecutionNode } from "../baseExecutionNode";
 import { GlobeIcon } from "lucide-react";
 import { HttpRequestFormValue, HttpRequestDialog } from "./dialog";
+import { useNodeStatus } from "../../hooks/use-node-status";
+import { fetchHttpRequestRealtimeToken } from "./actions";
 
 type HttpRequestNodeData = {
-  variable?: string;  // Variable name for referencing result
+  variableName?: string;  // Variable name for referencing result
   endPoint?: string; // API URL
   method?: "GET" | "PUT" | "POST" | "PATCH" | "DELETE";
   body?: string;
@@ -21,7 +23,14 @@ export const HttpRequestNode = memo((props: NodeProps<HttpRequestNodeType>) => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const { setNodes } = useReactFlow();              //React Flow hook to update node data
-  const nodeStatus = "initial";
+
+  const nodeStatus = useNodeStatus({
+    nodeId: props.id,
+    channel: "http-request-execution",
+    topic: "status",
+    refreshToken: fetchHttpRequestRealtimeToken
+  });
+
   const handleOpenSetting = () => setDialogOpen(true);
 
   const handleSubmit = (values: HttpRequestFormValue) => {

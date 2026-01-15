@@ -2,6 +2,7 @@ import { NodeExecutor } from "@/features/executions/types";
 import { NonRetriableError } from "inngest";
 import ky, { type Options as KyOptions } from "ky";
 import Handlebars from "handlebars";
+import { httpRequestChannel } from "@/inngest/channels/http-request";
 
 // Register custom Handlebars helper for JSON stringification
 Handlebars.registerHelper("json", (context) => {
@@ -23,19 +24,42 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
   nodeId,
   context, //data from prev node
   step,
+  publish,
 }) => {
-  // ============================================================================
-  // VALIDATION: Check all required fields
-  // ============================================================================
+  await publish(
+    httpRequestChannel().status({
+      nodeId: nodeId,
+      status: "loading",
+    })
+  );
+
   if (!data.endPoint) {
+    await publish(
+      httpRequestChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
     throw new NonRetriableError("HTTP request node: No endpoint configured");
   }
 
   if (!data.variableName) {
+    await publish(
+      httpRequestChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
     throw new NonRetriableError("Variable name is not configured");
   }
 
   if (!data.method) {
+    await publish(
+      httpRequestChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
     throw new NonRetriableError("Method is not configured");
   }
 
@@ -48,44 +72,65 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
   // EXECUTION: Make HTTP request with template rendering
 
-  const result = await step.run("http-request", async () => {
-    // Render endpoint URL template
-    const endpoint = Handlebars.compile(data.endPoint)(context);
-    const method = data.method;
+  try {
+    const result = await step.run("http-request", async () => {
+      // Render endpoint URL template
+      const endpoint = Handlebars.compile(data.endPoint)(context);
+      const method = data.method;
 
-    const options: KyOptions = { method };
+      const options: KyOptions = { method };
 
-    if (["POST", "PUT", "PATCH"].includes(method)) {
-      const resolved = Handlebars.compile(data.body || "{}")(context);
-      JSON.parse(resolved);
-      options.body = resolved;
-      options.headers = {
-        "Content-type": "application/json",
+      if (["POST", "PUT", "PATCH"].includes(method)) {
+        const resolved = Handlebars.compile(data.body || "{}")(context);
+        JSON.parse(resolved);
+        options.body = resolved;
+        options.headers = {
+          "Content-type": "application/json",
+        };
+      }
+
+      const response = await ky(endpoint, options);
+      const contentType = response.headers.get("content-type");
+      const responseData = contentType?.includes("application/json")
+        ? await response.json()
+        : await response.text();
+
+      const payload = {
+        httpResponse: {
+          status: response.status,
+          statusText: response.statusText,
+          data: responseData,
+        },
       };
-    }
 
-    const response = await ky(endpoint, options);
-    const contentType = response.headers.get("content-type");
-    const responseData = contentType?.includes("application/json")
-      ? await response.json()
-      : await response.text();
+      return {
+        ...context,
+        [data.variableName]: payload,
+      };
+    });
 
-    const payload = {
-      httpResponse: {
-        status: response.status,
-        statusText: response.statusText,
-        data: responseData,
-      },
-    };
+    await publish(
+      httpRequestChannel().status({
+        nodeId,
+        status: "success",
+      })
+    );
 
-    return {
-      ...context,
-      [data.variableName]: payload,
-    };
-  });
-
-  return result;
+    return result;
+  } catch (err) {
+    await publish(
+      httpRequestChannel().status({
+        nodeId,
+        status: "error",
+      })
+    );
+    throw err;
+  }
 };
+
+
+
+
 
 
 
@@ -160,7 +205,7 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 // STEP 3: Validation Phase
 // ────────────────────────
 // ✅ endPoint exists? YES (after template resolution)
-// ✅ variableName exists? YES 
+// ✅ variableName exists? YES
 // ✅ method exists? YES
 // ✅ POST/PUT/PATCH has body? N/A for GET
 // All validations pass...
@@ -211,7 +256,7 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
 // responseData = {
 //   id: 123,
-//   name: "John Doe", 
+//   name: "John Doe",
 //   email: "john@example.com"
 // }
 
@@ -243,7 +288,7 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 //   apiResponse: {              ← Dynamic key from user input
 //     httpResponse: {
 //       status: 200,
-//       statusText: "OK", 
+//       statusText: "OK",
 //       data: { ... }
 //     }
 //   }
@@ -281,7 +326,6 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 // - context.baseUrl                               ← From original context
 // - context.userId                                ← From original context
 
-
 // ┌──────────────────────────────────────────────────────────────────────┐
 // │                        ERROR HANDLING FLOW                           │
 // └──────────────────────────────────────────────────────────────────────┘
@@ -292,13 +336,12 @@ export const httpRequestExecutor: NodeExecutor<HttpRequestData> = async ({
 
 // For missing required fields:
 // If !data.variableName → "Variable name is not configured"
-// If !data.endPoint → "HTTP request node: No endpoint configured"  
+// If !data.endPoint → "HTTP request node: No endpoint configured"
 // If !data.method → "Method is not configured"
 
 // For malformed JSON in body:
 // During body compilation and JSON.parse(resolved):
 // → Will throw parsing error if template renders invalid JSON
-
 
 // ┌──────────────────────────────────────────────────────────────────────┐
 // │                      TEMPLATE RENDERING EXAMPLE                      │
