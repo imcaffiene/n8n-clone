@@ -106,7 +106,7 @@ export const HttpRequestDialog = ({
                     />
                   </FormControl>
                   <FormDescription>
-                    Use this name to referance the result in other nodes:{" "}
+                    Use this name to reference the result in other nodes:{" "}
                     {`{{${watchVariableName}.httpResponse.data}}`}
                   </FormDescription>
 
